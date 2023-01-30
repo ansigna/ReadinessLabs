@@ -1,0 +1,538 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.13.1.58284",
+      "templateHash": "5420843910740226179"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "metadata": {
+        "description": "The Azure region into which the resources should be deployed."
+      }
+    }
+  },
+  "variables": {
+    "onpremVnetName": "vnet-onpremises",
+    "onpremVnetAddress": "192.168.0.0/16",
+    "onpremSubnet1Name": "GatewaySubnet",
+    "onpremSubnet1Address": "192.168.1.0/27",
+    "onpremSubnet2Name": "snet-onpremises-worker",
+    "onpremSubnet2Address": "192.168.0.0/24",
+    "azureHubVnetName": "vnet-azure-hub",
+    "azureHubVnetAddress": "10.0.0.0/16",
+    "azureHubSubnet1Name": "GatewaySubnet",
+    "azureHubSubnet1Address": "10.0.1.0/27",
+    "azureSpokeVnetName": "vnet-azure-spoke",
+    "azureSpokeVnetAddress": "10.1.0.0/16",
+    "azureSpokeSubnet1Name": "snet-azure-worker",
+    "azureSpokeSubnet1Address": "10.1.0.0/28",
+    "onpremVNGName": "vng-onpremises",
+    "azureVNGName": "vng-azure-hub",
+    "onpremLNGName": "lng-onpremises",
+    "azureLNGName": "lng-azure",
+    "onpremConnectionName": "conn-to-azure",
+    "azureConnectionName": "conn-to-onpremises",
+    "onpremVNGPip": "pip-vng-onpremises",
+    "azureVNGPip": "pip-vng-azure-hub",
+    "routeTableName": "rt-gateway-routes",
+    "onpremVMName": "vm-onpremises",
+    "azureVMName": "vm-azure",
+    "windowsUsername": "AzureUser",
+    "windowsPassword": "SL-cr3_hUgt5iEZ",
+    "vmSize": "Standard_D2s_v3",
+    "vmImage": {
+      "publisher": "MicrosoftWindowsServer",
+      "offer": "WindowsServer",
+      "sku": "2019-Datacenter",
+      "version": "latest"
+    },
+    "vmOsDisk": {
+      "createOption": "FromImage",
+      "managedDisk": {
+        "storageAccountType": "StandardSSD_LRS"
+      }
+    },
+    "onpremVMOsProfile": {
+      "computerName": "[variables('onpremVMName')]",
+      "adminUsername": "[variables('windowsUsername')]",
+      "adminPassword": "[variables('windowsPassword')]"
+    },
+    "azureVMOsProfile": {
+      "computerName": "[variables('azureVMName')]",
+      "adminUsername": "[variables('windowsUsername')]",
+      "adminPassword": "[variables('windowsPassword')]"
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Network/virtualNetworks/subnets",
+      "apiVersion": "2020-11-01",
+      "name": "[format('{0}/{1}', variables('onpremVnetName'), variables('onpremSubnet1Name'))]",
+      "properties": {
+        "addressPrefix": "[variables('onpremSubnet1Address')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', variables('onpremVnetName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworks/subnets",
+      "apiVersion": "2020-11-01",
+      "name": "[format('{0}/{1}', variables('onpremVnetName'), variables('onpremSubnet2Name'))]",
+      "properties": {
+        "addressPrefix": "[variables('onpremSubnet2Address')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('onpremVnetName'), variables('onpremSubnet1Name'))]",
+        "[resourceId('Microsoft.Network/virtualNetworks', variables('onpremVnetName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworks/subnets",
+      "apiVersion": "2020-11-01",
+      "name": "[format('{0}/{1}', variables('azureHubVnetName'), variables('azureHubSubnet1Name'))]",
+      "properties": {
+        "addressPrefix": "[variables('azureHubSubnet1Address')]",
+        "routeTable": {
+          "id": "[resourceId('Microsoft.Network/routeTables', variables('routeTableName'))]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', variables('azureHubVnetName'))]",
+        "[resourceId('Microsoft.Network/routeTables', variables('routeTableName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworks/subnets",
+      "apiVersion": "2020-11-01",
+      "name": "[format('{0}/{1}', variables('azureSpokeVnetName'), variables('azureSpokeSubnet1Name'))]",
+      "properties": {
+        "addressPrefix": "[variables('azureSpokeSubnet1Address')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', variables('azureSpokeVnetName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworks",
+      "apiVersion": "2020-11-01",
+      "name": "[variables('onpremVnetName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "[variables('onpremVnetAddress')]"
+          ]
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworks",
+      "apiVersion": "2020-11-01",
+      "name": "[variables('azureHubVnetName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "[variables('azureHubVnetAddress')]"
+          ]
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworks",
+      "apiVersion": "2020-11-01",
+      "name": "[variables('azureSpokeVnetName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "[variables('azureSpokeVnetAddress')]"
+          ]
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings",
+      "apiVersion": "2020-11-01",
+      "name": "[format('{0}/{1}', variables('azureHubVnetName'), 'hubToSpoke')]",
+      "properties": {
+        "allowForwardedTraffic": true,
+        "allowGatewayTransit": true,
+        "allowVirtualNetworkAccess": true,
+        "remoteVirtualNetwork": {
+          "id": "[resourceId('Microsoft.Network/virtualNetworks', variables('azureSpokeVnetName'))]"
+        },
+        "remoteVirtualNetworkAddressSpace": {
+          "addressPrefixes": [
+            "[variables('azureSpokeVnetAddress')]"
+          ]
+        },
+        "useRemoteGateways": false
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', variables('azureHubVnetName'))]",
+        "[resourceId('Microsoft.Network/virtualNetworks', variables('azureSpokeVnetName'))]",
+        "[resourceId('Microsoft.Network/virtualNetworkGateways', variables('azureVNGName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings",
+      "apiVersion": "2020-11-01",
+      "name": "[format('{0}/{1}', variables('azureSpokeVnetName'), 'spokeToHub')]",
+      "properties": {
+        "allowForwardedTraffic": true,
+        "allowGatewayTransit": false,
+        "allowVirtualNetworkAccess": true,
+        "remoteVirtualNetwork": {
+          "id": "[resourceId('Microsoft.Network/virtualNetworks', variables('azureHubVnetName'))]"
+        },
+        "remoteVirtualNetworkAddressSpace": {
+          "addressPrefixes": [
+            "[variables('azureHubVnetAddress')]"
+          ]
+        },
+        "useRemoteGateways": true
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', variables('azureHubVnetName'))]",
+        "[resourceId('Microsoft.Network/virtualNetworks', variables('azureSpokeVnetName'))]",
+        "[resourceId('Microsoft.Network/virtualNetworkGateways', variables('azureVNGName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/routeTables",
+      "apiVersion": "2020-11-01",
+      "name": "[variables('routeTableName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "disableBgpRoutePropagation": false
+      }
+    },
+    {
+      "type": "Microsoft.Network/routeTables/routes",
+      "apiVersion": "2020-11-01",
+      "name": "[format('{0}/{1}', variables('routeTableName'), 'route1')]",
+      "properties": {
+        "nextHopType": "VirtualAppliance",
+        "nextHopIpAddress": "10.0.0.6",
+        "addressPrefix": "0.0.0.0/1"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/connections', variables('azureConnectionName'))]",
+        "[resourceId('Microsoft.Network/routeTables', variables('routeTableName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/routeTables/routes",
+      "apiVersion": "2020-11-01",
+      "name": "[format('{0}/{1}', variables('routeTableName'), 'route2')]",
+      "properties": {
+        "nextHopType": "VirtualAppliance",
+        "nextHopIpAddress": "10.0.0.6",
+        "addressPrefix": "128.0.0.0/1"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/connections', variables('azureConnectionName'))]",
+        "[resourceId('Microsoft.Network/routeTables', variables('routeTableName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/publicIPAddresses",
+      "apiVersion": "2020-11-01",
+      "name": "[variables('onpremVNGPip')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Standard",
+        "tier": "Regional"
+      },
+      "properties": {
+        "publicIPAddressVersion": "IPv4",
+        "publicIPAllocationMethod": "Static"
+      }
+    },
+    {
+      "type": "Microsoft.Network/publicIPAddresses",
+      "apiVersion": "2020-11-01",
+      "name": "[variables('azureVNGPip')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Standard",
+        "tier": "Regional"
+      },
+      "properties": {
+        "publicIPAddressVersion": "IPv4",
+        "publicIPAllocationMethod": "Static"
+      }
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworkGateways",
+      "apiVersion": "2020-11-01",
+      "name": "[variables('onpremVNGName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "gatewayType": "Vpn",
+        "vpnType": "RouteBased",
+        "vpnGatewayGeneration": "Generation1",
+        "sku": {
+          "name": "VpnGw1",
+          "tier": "VpnGw1"
+        },
+        "ipConfigurations": [
+          {
+            "name": "gatewayconfig",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('onpremVnetName'), variables('onpremSubnet1Name'))]"
+              },
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('onpremVNGPip'))]"
+              }
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('onpremVnetName'), variables('onpremSubnet1Name'))]",
+        "[resourceId('Microsoft.Network/publicIPAddresses', variables('onpremVNGPip'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworkGateways",
+      "apiVersion": "2020-11-01",
+      "name": "[variables('azureVNGName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "gatewayType": "Vpn",
+        "vpnType": "RouteBased",
+        "vpnGatewayGeneration": "Generation1",
+        "sku": {
+          "name": "VpnGw1",
+          "tier": "VpnGw1"
+        },
+        "ipConfigurations": [
+          {
+            "name": "gatewayconfig",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('azureHubVnetName'), variables('azureHubSubnet1Name'))]"
+              },
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('azureVNGPip'))]"
+              }
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('azureHubVnetName'), variables('azureHubSubnet1Name'))]",
+        "[resourceId('Microsoft.Network/publicIPAddresses', variables('azureVNGPip'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/localNetworkGateways",
+      "apiVersion": "2020-11-01",
+      "name": "[variables('onpremLNGName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "localNetworkAddressSpace": {
+          "addressPrefixes": [
+            "[variables('onpremVnetAddress')]"
+          ]
+        },
+        "gatewayIpAddress": "[reference(resourceId('Microsoft.Network/publicIPAddresses', variables('onpremVNGPip')), '2022-05-01').ipAddress]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/publicIPAddresses', variables('onpremVNGPip'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/localNetworkGateways",
+      "apiVersion": "2020-11-01",
+      "name": "[variables('azureLNGName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "localNetworkAddressSpace": {
+          "addressPrefixes": [
+            "[variables('azureHubVnetAddress')]"
+          ]
+        },
+        "gatewayIpAddress": "[reference(resourceId('Microsoft.Network/publicIPAddresses', variables('azureVNGPip')), '2022-05-01').ipAddress]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/publicIPAddresses', variables('azureVNGPip'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/connections",
+      "apiVersion": "2020-11-01",
+      "name": "[variables('onpremConnectionName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "sharedKey": "azure123456",
+        "connectionType": "IPsec",
+        "connectionMode": "ResponderOnly",
+        "ipsecPolicies": [
+          {
+            "dhGroup": "DHGroup1",
+            "ikeEncryption": "AES128",
+            "ikeIntegrity": "SHA1",
+            "ipsecEncryption": "AES128",
+            "ipsecIntegrity": "SHA1",
+            "pfsGroup": "None",
+            "saDataSizeKilobytes": 102400000,
+            "saLifeTimeSeconds": 27000
+          }
+        ],
+        "virtualNetworkGateway1": {
+          "id": "[resourceId('Microsoft.Network/virtualNetworkGateways', variables('onpremVNGName'))]",
+          "properties": {}
+        },
+        "localNetworkGateway2": {
+          "id": "[resourceId('Microsoft.Network/localNetworkGateways', variables('azureLNGName'))]",
+          "properties": {}
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/localNetworkGateways', variables('azureLNGName'))]",
+        "[resourceId('Microsoft.Network/virtualNetworkGateways', variables('onpremVNGName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/connections",
+      "apiVersion": "2020-11-01",
+      "name": "[variables('azureConnectionName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "sharedKey": "654321eruza",
+        "connectionType": "IPsec",
+        "connectionMode": "Default",
+        "ipsecPolicies": [
+          {
+            "dhGroup": "DHGroup2",
+            "ikeEncryption": "GCMAES256",
+            "ikeIntegrity": "GCMAES256",
+            "ipsecEncryption": "GCMAES256",
+            "ipsecIntegrity": "GCMAES256",
+            "pfsGroup": "None",
+            "saDataSizeKilobytes": 102400000,
+            "saLifeTimeSeconds": 27000
+          }
+        ],
+        "virtualNetworkGateway1": {
+          "id": "[resourceId('Microsoft.Network/virtualNetworkGateways', variables('azureVNGName'))]",
+          "properties": {}
+        },
+        "localNetworkGateway2": {
+          "id": "[resourceId('Microsoft.Network/localNetworkGateways', variables('onpremLNGName'))]",
+          "properties": {}
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworkGateways', variables('azureVNGName'))]",
+        "[resourceId('Microsoft.Network/localNetworkGateways', variables('onpremLNGName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "apiVersion": "2020-11-01",
+      "name": "[format('{0}-NIC', variables('onpremVMName'))]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "[format('{0}NicConfig1', variables('onpremVMName'))]",
+            "properties": {
+              "subnet": {
+                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('onpremVnetName'), variables('onpremSubnet2Name'))]"
+              }
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('onpremVnetName'), variables('onpremSubnet2Name'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "apiVersion": "2022-03-01",
+      "name": "[variables('onpremVMName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[variables('vmSize')]"
+        },
+        "osProfile": "[variables('onpremVMOsProfile')]",
+        "storageProfile": {
+          "imageReference": "[variables('vmImage')]",
+          "osDisk": "[variables('vmOsDisk')]"
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', format('{0}-NIC', variables('onpremVMName')))]"
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/networkInterfaces', format('{0}-NIC', variables('onpremVMName')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "apiVersion": "2020-11-01",
+      "name": "[format('{0}-NIC', variables('azureVMName'))]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "[format('{0}NicConfig1', variables('azureVMName'))]",
+            "properties": {
+              "subnet": {
+                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('azureSpokeVnetName'), variables('azureSpokeSubnet1Name'))]"
+              }
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('azureSpokeVnetName'), variables('azureSpokeSubnet1Name'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "apiVersion": "2022-03-01",
+      "name": "[variables('azureVMName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[variables('vmSize')]"
+        },
+        "osProfile": "[variables('azureVMOsProfile')]",
+        "storageProfile": {
+          "imageReference": "[variables('vmImage')]",
+          "osDisk": "[variables('vmOsDisk')]"
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', format('{0}-NIC', variables('azureVMName')))]"
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/networkInterfaces', format('{0}-NIC', variables('azureVMName')))]"
+      ]
+    }
+  ]
+}

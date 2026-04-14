@@ -1,0 +1,17 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": { "value": "eastus" },
+    "namePrefix": { "value": "vpnlab" },
+    "deployBastion": { "value": false },
+    "vm1Size": { "value": "Standard_DS1_v2" },
+    "vm2Size": { "value": "Standard_DS1_v2" },
+    "vm1Sku": { "value": "2019-Datacenter" },
+    "vm2Sku": { "value": "2019-Datacenter" },
+    "vm1AdminUsername": { "value": "azureadmin" },
+    "vm1AdminPassword": { "value": "P@ssw0rdExample1!" },
+    "vm2AdminUsername": { "value": "azureadmin" },
+    "vm2AdminPassword": { "value": "P@ssw0rdExample2!" }
+  }
+}

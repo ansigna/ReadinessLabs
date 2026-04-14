@@ -1,30 +1,45 @@
-# VPN Practice Lab — Deploy Template
+# Azure VPN Troubleshooting Lab (Bicep)
 
-This template provisions two VNets, each with a Virtual Network Gateway and a basic VM, plus two VPN connections:
+This repository contains a parameterized Bicep template to deploy a two-VNet VPN troubleshooting lab for networking engineers.
 
-- `vnet1-to-vnet2-connection`: a correct VNet-to-VNet connection using AES256/SHA256.
-- `vnet1-to-onprem-wrong-connection`: a Site-to-Site connection to a deliberately misconfigured "on-prem" local network gateway (incorrect address prefixes / traffic selectors) using AES128/SHA1 — intended for troubleshooting practice.
+**Files**
+- `azurevpnlab.bicep` — main deployment template
+- `azurevpnlab.parameters.json` — example parameter values
 
-Files:
+**Parameters**
+- `location`: region to deploy (example: `eastus`)
+- `namePrefix`: resource name prefix (example: `vpnlab`)
+- `vnet1Prefix`, `vnet1VmSubnet`, `vnet1GatewaySubnet`: VNet1 CIDR and subnet prefixes
+- `vnet2Prefix`, `vnet2VmSubnet`, `vnet2GatewaySubnet`: VNet2 CIDR and subnet prefixes (must not overlap with VNet1)
+- `vm1Size`, `vm2Size`: VM sizes (example: `Standard_DS1_v2`)
+- `vm1Sku`, `vm2Sku`: Windows image SKU (example: `2019-Datacenter`)
+- `vm1AdminUsername`, `vm1AdminPassword`, `vm2AdminUsername`, `vm2AdminPassword`: per-VM admin credentials (provide secure values)
+- `vpnSharedKey`: shared key used by connection 1 (connection 2 intentionally uses a wrong key in the template)
+- `deployBastion`: boolean to enable Azure Bastion deployment
 
-- `main.bicep` — the Bicep template that creates the lab.
+See the template files: [azurevpnlab.bicep](azurevpnlab.bicep) and [azurevpnlab.parameters.json](azurevpnlab.parameters.json)
 
-Quick deploy (Azure CLI):
+**Quick deploy (CLI)**
+1. Clone and push the repo to `https://github.com/ansigna/ReadinessLabs` (or your fork).
+2. Run:
 
 ```bash
-# Create a resource group first
-az group create -n vpn-practice-rg -l eastus
-
-# Deploy the Bicep template (you will be prompted to enter a secure admin password)
-az deployment group create -g vpn-practice-rg --template-file AzureTemplates/vpn-practice/main.bicep
+az login
+az account set --subscription "<your-subscription-or-id>"
+az deployment group create -g <resource-group-name> --template-file azurevpnlab.bicep --parameters @azurevpnlab.parameters.json
 ```
 
-Deploy-to-Azure (portal) button
+**Deploy-to-Azure button**
+Place this link in the GitHub README (after pushing `azurevpnlab.bicep` to `ansigna/ReadinessLabs`):
 
+https://portal.azure.com/#create/Microsoft.Template/uri/https://raw.githubusercontent.com/ansigna/ReadinessLabs/main/azurevpnlab.bicep
 
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https://raw.githubusercontent.com/ansigna/ReadinessLabs/main/AzureTemplates/vpn-practice/azuredeploy.json)
+**Instructor notes / lab guidance**
+- Ensure VNet CIDRs do not overlap when creating multiple student instances.
+- Intentional failures included for troubleshooting exercises:
+  - `connection2` uses a wrong `sharedKey` and weak algorithms to trigger IKE/IPsec negotiation failures.
+  - `localGw2` is configured with an incorrect address prefix (`10.99.0.0/16`) to create traffic-selector / SA mismatch scenarios.
+  - `ipsecPolicies` differ between connections to exercise algorithm negotiation troubleshooting.
+- Suggested student checks: connection diagnostics in the Azure portal, `NetworkWatcher` VPN diagnostic logs, IPsec policy comparison, and verifying traffic selectors and shared keys.
 
-Instructor notes
-
-- The second connection intentionally has a mismatched address prefix configured in the `localNetworkGateways` resource (`10.200.0.0/16`) that does not match `vnet2` (`10.1.0.0/16`). This simulates incorrect traffic selectors so engineers can practice diagnosing the failure.
-- The two connections use different IPSec/IKE algorithm sets via `ipsecPolicies` to give engineers practice validating SA parameters.
+If you want, I can also add a GitHub Actions workflow to validate the Bicep template or an ARM wrapper for the Portal button.

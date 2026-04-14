@@ -10,7 +10,7 @@
       "properties": {
         "mode": "Incremental",
         "templateLink": {
-          "uri": "https://raw.githubusercontent.com/YOUR_USER/YOUR_REPO/main/AzureTemplates/vpn-practice/main.bicep",
+          "uri": "https://raw.githubusercontent.com/ansigna/ReadinessLabs/main/AzureTemplates/vpn-practice/main.bicep",
           "contentVersion": "1.0.0.0"
         }
       }

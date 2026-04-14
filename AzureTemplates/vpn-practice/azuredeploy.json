@@ -1,20 +1,414 @@
 {
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
-  "parameters": {},
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Location for all resources"
+      }
+    },
+    "vnet1Prefix": {
+      "type": "string",
+      "defaultValue": "10.0.0.0/16"
+    },
+    "vnet2Prefix": {
+      "type": "string",
+      "defaultValue": "10.1.0.0/16"
+    },
+    "adminUsername": {
+      "type": "string",
+      "defaultValue": "azureuser"
+    },
+    "adminPassword": {
+      "type": "secureString"
+    },
+    "vmSize": {
+      "type": "string",
+      "defaultValue": "Standard_B1s"
+    }
+  },
   "resources": [
     {
-      "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2021-04-01",
-      "name": "linkedTemplate",
+      "type": "Microsoft.Network/virtualNetworks",
+      "apiVersion": "2021-05-01",
+      "name": "vnet1-demo",
+      "location": "[parameters('location')]",
       "properties": {
-        "mode": "Incremental",
-        "templateLink": {
-          "uri": "https://raw.githubusercontent.com/ansigna/ReadinessLabs/main/AzureTemplates/vpn-practice/main.bicep",
-          "contentVersion": "1.0.0.0"
+        "addressSpace": {
+          "addressPrefixes": [
+            "[parameters('vnet1Prefix')]"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "default",
+            "properties": {
+              "addressPrefix": "10.0.0.0/24"
+            }
+          },
+          {
+            "name": "GatewaySubnet",
+            "properties": {
+              "addressPrefix": "10.0.255.0/27"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworks",
+      "apiVersion": "2021-05-01",
+      "name": "vnet2-demo",
+      "location": "[parameters('location')]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "[parameters('vnet2Prefix')]"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "default",
+            "properties": {
+              "addressPrefix": "10.1.0.0/24"
+            }
+          },
+          {
+            "name": "GatewaySubnet",
+            "properties": {
+              "addressPrefix": "10.1.255.0/27"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/publicIPAddresses",
+      "apiVersion": "2021-05-01",
+      "name": "vnet1-gw-pip",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Standard"
+      },
+      "properties": {
+        "publicIPAllocationMethod": "Dynamic"
+      }
+    },
+    {
+      "type": "Microsoft.Network/publicIPAddresses",
+      "apiVersion": "2021-05-01",
+      "name": "vnet2-gw-pip",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Standard"
+      },
+      "properties": {
+        "publicIPAllocationMethod": "Dynamic"
+      }
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworkGateways",
+      "apiVersion": "2021-08-01",
+      "name": "vnet1-gateway",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "VpnGw1",
+        "tier": "VpnGw1"
+      },
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "vnetGatewayConfig",
+            "properties": {
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses','vnet1-gw-pip')]"
+              },
+              "subnet": {
+                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets','vnet1-demo','GatewaySubnet')]"
+              }
+            }
+          }
+        ],
+        "gatewayType": "Vpn",
+        "vpnType": "RouteBased",
+        "enableBgp": false
+      },
+      "dependsOn": [
+        "vnet1-demo",
+        "vnet1-gw-pip"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworkGateways",
+      "apiVersion": "2021-08-01",
+      "name": "vnet2-gateway",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "VpnGw1",
+        "tier": "VpnGw1"
+      },
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "vnetGatewayConfig",
+            "properties": {
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses','vnet2-gw-pip')]"
+              },
+              "subnet": {
+                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets','vnet2-demo','GatewaySubnet')]"
+              }
+            }
+          }
+        ],
+        "gatewayType": "Vpn",
+        "vpnType": "RouteBased",
+        "enableBgp": false
+      },
+      "dependsOn": [
+        "vnet2-demo",
+        "vnet2-gw-pip"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/localNetworkGateways",
+      "apiVersion": "2021-05-01",
+      "name": "onprem-wrong",
+      "location": "[parameters('location')]",
+      "properties": {
+        "gatewayIpAddress": "203.0.113.10",
+        "localNetworkAddressSpace": {
+          "addressPrefixes": [
+            "10.200.0.0/16"
+          ]
         }
       }
+    },
+    {
+      "type": "Microsoft.Network/connections",
+      "apiVersion": "2021-08-01",
+      "name": "vnet1-to-vnet2-connection",
+      "location": "[parameters('location')]",
+      "properties": {
+        "connectionType": "Vnet2Vnet",
+        "virtualNetworkGateway1": {
+          "id": "[resourceId('Microsoft.Network/virtualNetworkGateways','vnet1-gateway')]"
+        },
+        "virtualNetworkGateway2": {
+          "id": "[resourceId('Microsoft.Network/virtualNetworkGateways','vnet2-gateway')]"
+        },
+        "sharedKey": "P@ssw0rd12345!",
+        "ipsecPolicies": [
+          {
+            "saLifeTimeSeconds": 3600,
+            "saDataSizeKilobytes": 102400000,
+            "ipsecEncryption": "AES256",
+            "ipsecIntegrity": "SHA256",
+            "ikeEncryption": "AES256",
+            "ikeIntegrity": "SHA256",
+            "dhGroup": "DHGroup14",
+            "pfsGroup": "PFS2"
+          }
+        ]
+      },
+      "dependsOn": [
+        "vnet1-gateway",
+        "vnet2-gateway"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/connections",
+      "apiVersion": "2021-08-01",
+      "name": "vnet1-to-onprem-wrong-connection",
+      "location": "[parameters('location')]",
+      "properties": {
+        "connectionType": "IPsec",
+        "virtualNetworkGateway1": {
+          "id": "[resourceId('Microsoft.Network/virtualNetworkGateways','vnet1-gateway')]"
+        },
+        "localNetworkGateway2": {
+          "id": "[resourceId('Microsoft.Network/localNetworkGateways','onprem-wrong')]"
+        },
+        "sharedKey": "BadSharedKey!",
+        "ipsecPolicies": [
+          {
+            "saLifeTimeSeconds": 28800,
+            "saDataSizeKilobytes": 102400000,
+            "ipsecEncryption": "AES128",
+            "ipsecIntegrity": "SHA1",
+            "ikeEncryption": "AES128",
+            "ikeIntegrity": "SHA1",
+            "dhGroup": "DHGroup1",
+            "pfsGroup": "PFS1"
+          }
+        ]
+      },
+      "dependsOn": [
+        "vnet1-gateway",
+        "onprem-wrong"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/publicIPAddresses",
+      "apiVersion": "2021-05-01",
+      "name": "vm1-pip",
+      "location": "[parameters('location')]",
+      "properties": {
+        "publicIPAllocationMethod": "Dynamic"
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "apiVersion": "2021-05-01",
+      "name": "vm1-nic",
+      "location": "[parameters('location')]",
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "subnet": {
+                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets','vnet1-demo','default')]"
+              },
+              "privateIPAllocationMethod": "Dynamic",
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses','vm1-pip')]"
+              }
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "vnet1-demo",
+        "vm1-pip"
+      ]
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "apiVersion": "2021-07-01",
+      "name": "vm1-demo",
+      "location": "[parameters('location')]",
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[parameters('vmSize')]"
+        },
+        "osProfile": {
+          "computerName": "vm1",
+          "adminUsername": "[parameters('adminUsername')]",
+          "adminPassword": "[parameters('adminPassword')]",
+          "linuxConfiguration": {
+            "disablePasswordAuthentication": false
+          }
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "Canonical",
+            "offer": "UbuntuServer",
+            "sku": "18.04-LTS",
+            "version": "latest"
+          },
+          "osDisk": {
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces','vm1-nic')]"
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "vm1-nic"
+      ]
+    },
+    {
+      "type": "Microsoft.Network/publicIPAddresses",
+      "apiVersion": "2021-05-01",
+      "name": "vm2-pip",
+      "location": "[parameters('location')]",
+      "properties": {
+        "publicIPAllocationMethod": "Dynamic"
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "apiVersion": "2021-05-01",
+      "name": "vm2-nic",
+      "location": "[parameters('location')]",
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "subnet": {
+                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets','vnet2-demo','default')]"
+              },
+              "privateIPAllocationMethod": "Dynamic",
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses','vm2-pip')]"
+              }
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "vnet2-demo",
+        "vm2-pip"
+      ]
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "apiVersion": "2021-07-01",
+      "name": "vm2-demo",
+      "location": "[parameters('location')]",
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[parameters('vmSize')]"
+        },
+        "osProfile": {
+          "computerName": "vm2",
+          "adminUsername": "[parameters('adminUsername')]",
+          "adminPassword": "[parameters('adminPassword')]",
+          "linuxConfiguration": {
+            "disablePasswordAuthentication": false
+          }
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "Canonical",
+            "offer": "UbuntuServer",
+            "sku": "18.04-LTS",
+            "version": "latest"
+          },
+          "osDisk": {
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces','vm2-nic')]"
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "vm2-nic"
+      ]
     }
   ],
-  "outputs": {}
+  "outputs": {
+    "vnet1Id": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Network/virtualNetworks','vnet1-demo')]"
+    },
+    "vnet2Id": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Network/virtualNetworks','vnet2-demo')]"
+    }
+  }
 }

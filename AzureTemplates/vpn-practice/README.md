@@ -23,7 +23,9 @@ Deploy-to-Azure (portal) button
 
 > Note: The portal create button needs a publicly accessible raw URL (raw.githubusercontent.com). This README and the ARM wrapper are configured for the `ansigna/ReadinessLabs` repository.
 
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https://raw.githubusercontent.com/ansigna/ReadinessLabs/main/AzureTemplates/vpn-practice/azuredeploy.json)
+<a href="https://portal.azure.com/#create/Microsoft.Template/uri/https://raw.githubusercontent.com/ansigna/ReadinessLabs/main/AzureTemplates/vpn-practice/azuredeploy.json" target="_blank" rel="noopener noreferrer">
+	<img src="https://aka.ms/deploytoazurebutton" alt="Deploy to Azure" />
+</a>
 
 Instructor notes
 

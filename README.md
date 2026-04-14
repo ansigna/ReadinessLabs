@@ -29,10 +29,19 @@ az account set --subscription "<your-subscription-or-id>"
 az deployment group create -g <resource-group-name> --template-file azurevpnlab.bicep --parameters @azurevpnlab.parameters.json
 ```
 
-**Deploy-to-Azure button**
-Place this link in the GitHub README (after pushing `azurevpnlab.bicep` to `ansigna/ReadinessLabs`):
 
-https://portal.azure.com/#create/Microsoft.Template/uri/https://raw.githubusercontent.com/ansigna/ReadinessLabs/main/azurevpnlab.bicep
+**Deploy-to-Azure button**
+Place this button in the GitHub README (after pushing the files to `ansigna/ReadinessLabs`):
+
+<p align="center">
+  <a href="https://portal.azure.com/#create/Microsoft.Template/uri/https://raw.githubusercontent.com/ansigna/ReadinessLabs/main/azuredeploy.json" target="_blank">
+    <img src="https://aka.ms/deploytoazurebutton" alt="Deploy to Azure" />
+  </a>
+</p>
+
+Direct portal link (raw ARM/Bicep):
+
+https://portal.azure.com/#create/Microsoft.Template/uri/https://raw.githubusercontent.com/ansigna/ReadinessLabs/main/azuredeploy.json
 
 **Instructor notes / lab guidance**
 - Ensure VNet CIDRs do not overlap when creating multiple student instances.

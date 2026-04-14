@@ -21,9 +21,8 @@ az deployment group create -g vpn-practice-rg --template-file AzureTemplates/vpn
 
 Deploy-to-Azure (portal) button
 
-> Note: The portal create button needs a publicly accessible raw URL (raw.githubusercontent.com). Replace `YOUR_USER` and `YOUR_REPO` below with the repo owner/name after you push this folder to GitHub.
 
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https://raw.githubusercontent.com/YOUR_USER/YOUR_REPO/main/AzureTemplates/vpn-practice/azuredeploy.json)
+[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https://raw.githubusercontent.com/ansigna/ReadinessLabs/main/AzureTemplates/vpn-practice/azuredeploy.json)
 
 Instructor notes
 

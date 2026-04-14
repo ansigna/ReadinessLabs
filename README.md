@@ -28,8 +28,3 @@ Instructor notes
 
 - The second connection intentionally has a mismatched address prefix configured in the `localNetworkGateways` resource (`10.200.0.0/16`) that does not match `vnet2` (`10.1.0.0/16`). This simulates incorrect traffic selectors so engineers can practice diagnosing the failure.
 - The two connections use different IPSec/IKE algorithm sets via `ipsecPolicies` to give engineers practice validating SA parameters.
-
-Next steps
-
-- Push this folder to GitHub and update the Deploy-to-Azure button link with the correct `YOUR_USER`/`YOUR_REPO` values.
-- Optionally run `bicep build AzureTemplates/vpn-practice/main.bicep` to produce ARM JSON for portal-based deployments.
